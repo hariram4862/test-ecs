@@ -1,0 +1,34 @@
+services:
+  container-manager:
+    build: ./container-manager
+    environment:
+      MOCK_ECS: "true"
+      MIN_WARM_AGENTS: 1
+      MAX_AGENTS: 10
+    ports: ["8000:8000"]
+  deployment-manager:
+    build: ./deployment-manager
+    environment:
+      MOCK_ECS: "false"
+      AWS_REGION: ap-south-1
+      AWS_PROFILE: ${AWS_PROFILE:-default}
+      AWS_SDK_LOAD_CONFIG: "1"
+      ECS_INSTANCE_TYPE: ${ECS_INSTANCE_TYPE:-t3.micro}
+    volumes:
+      - ${USERPROFILE}\.aws:/root/.aws:ro
+    ports: ["8001:8000"]
+    depends_on: [container-manager]
+  sidecar-1:
+    build: ./sidecar-1
+    environment: {CONTAINER_MANAGER_URL: http://container-manager:8000}
+    depends_on: [container-manager]
+  sidecar-2:
+    build: ./sidecar-2
+    environment:
+      CONTAINER_MANAGER_URL: http://container-manager:8000
+    depends_on: [container-manager]
+  ui:
+    build: ./ui
+    environment: {SIDECAR_1_URL: http://sidecar-1:8000}
+    ports: ["8080:8000"]
+    depends_on: [sidecar-1]
